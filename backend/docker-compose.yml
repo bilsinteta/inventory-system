@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: inventory_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: inventory_db
+      MYSQL_USER: inventoryuser
+      MYSQL_PASSWORD: inventorypass
+    ports:
+      - "3308:3306"  # Port 3307 untuk tidak conflict dengan project 1
+    volumes:
+      - inventory_mysql_data:/var/lib/mysql
+
+volumes:
+  inventory_mysql_data:

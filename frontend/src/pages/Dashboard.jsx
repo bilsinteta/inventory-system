@@ -51,7 +51,7 @@ const Dashboard = () => {
 
       // Update stats
       setStats({
-        totalProducts: allProductsData.pagination ? allProductsData.pagination.total_items : (allProductsData.products ? allProductsData.products.length : 0), // Adjust based on API structure
+        totalProducts: allProductsData.pagination ? allProductsData.pagination.total : (allProductsData.products ? allProductsData.products.length : 0), // Adjust based on API structure
         lowStockCount: lowStockData.products ? lowStockData.products.length : 0,
         totalSuppliers: suppliersData.length,
       });

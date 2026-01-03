@@ -3,6 +3,7 @@ import Navbar from '../components/Navbar';
 import ProductCard from '../components/ProductCard';
 import ProductModal from '../components/ProductModal';
 import StockModal from '../components/StockModal';
+import StockHistoryModal from '../components/StockHistoryModal'; // New import
 import SupplierModal from '../components/SupplierModal'; // New import
 import UserManagementModal from '../components/UserManagementModal'; // New import
 import { productService } from '../api/productService';
@@ -20,6 +21,7 @@ const Dashboard = () => {
   // Modals state
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [stockModalOpen, setStockModalOpen] = useState(false);
+  const [historyModalOpen, setHistoryModalOpen] = useState(false); // New
   const [supplierModalOpen, setSupplierModalOpen] = useState(false); // New
   const [approvalModalOpen, setApprovalModalOpen] = useState(false); // New
 
@@ -283,6 +285,10 @@ const Dashboard = () => {
                   setSelectedProduct(prod);
                   setStockModalOpen(true);
                 }}
+                onViewHistory={(prod) => {
+                  setSelectedProduct(prod);
+                  setHistoryModalOpen(true);
+                }}
               />
             ))}
           </div>
@@ -332,6 +338,16 @@ const Dashboard = () => {
           setSelectedProduct(null);
         }}
         onSubmit={handleStockUpdate}
+        product={selectedProduct}
+      />
+
+      <StockHistoryModal
+        key={selectedProduct ? `history-${selectedProduct.id}` : 'history'}
+        isOpen={historyModalOpen}
+        onClose={() => {
+          setHistoryModalOpen(false);
+          setSelectedProduct(null);
+        }}
         product={selectedProduct}
       />
 

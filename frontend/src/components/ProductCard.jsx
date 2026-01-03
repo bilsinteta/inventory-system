@@ -1,6 +1,6 @@
-import { FiEdit2, FiTrash2, FiAlertCircle } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiAlertCircle, FiClock } from 'react-icons/fi';
 
-const ProductCard = ({ product, onEdit, onDelete, onViewDetail }) => {
+const ProductCard = ({ product, onEdit, onDelete, onViewDetail, onViewHistory }) => {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -83,6 +83,13 @@ const ProductCard = ({ product, onEdit, onDelete, onViewDetail }) => {
             className="flex items-center justify-center gap-2 p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors group/btn"
           >
             <FiTrash2 size={18} className="group-hover/btn:rotate-12 transition-transform" />
+          </button>
+          <button
+            onClick={() => onViewHistory(product)}
+            className="flex items-center justify-center gap-2 p-2.5 bg-blue-50 text-blue-500 rounded-xl hover:bg-blue-100 transition-colors group/btn"
+            title="View History"
+          >
+            <FiClock size={18} className="group-hover/btn:rotate-12 transition-transform" />
           </button>
         </div>
       </div>

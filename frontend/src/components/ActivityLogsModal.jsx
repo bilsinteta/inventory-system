@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from '../api/axios';
-import { FiX, FiActivity, FiClock, FiUser, FiInfo } from 'react-icons/fi';
+import { FiX, FiActivity, FiClock, FiUser, FiInfo, FiDownload } from 'react-icons/fi';
 
 const ActivityLogsModal = ({ isOpen, onClose }) => {
     const [logs, setLogs] = useState([]);
@@ -49,21 +49,51 @@ const ActivityLogsModal = ({ isOpen, onClose }) => {
         });
     };
 
+    const handleExport = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('http://localhost:8081/api/admin/export/logs', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to generate PDF');
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `activity_logs_${new Date().toISOString().split('T')[0]}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            alert(error.message || 'Failed to export logs');
+        }
+    };
+
+    if (!isOpen) return null;
+
+
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
             <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" onClick={onClose} />
 
             <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col animate-slide-up">
                 {/* Header */}
-                <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 bg-gray-50/50 backdrop-blur-sm">
-                    <div>
-                        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                            <FiActivity className="text-primary-600" /> Audit Logs
-                        </h2>
-                        <p className="text-sm text-gray-500">Track user activities and system changes.</p>
+                <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
+                            <FiActivity size={20} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-800">System Activity Logs</h2>
+                            <p className="text-sm text-gray-500">Track user activities and system changes.</p>
+                        </div>
                     </div>
-
-                    <div className="flex items-center gap-4">
+                    <div className="flex gap-2 items-center">
                         <select
                             value={filter}
                             onChange={(e) => setFilter(e.target.value)}

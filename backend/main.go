@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"inventory-backend/config"
 	"inventory-backend/models"
 	"inventory-backend/routes"
@@ -13,6 +14,19 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
 )
+
+func seedCategories() {
+	categories := []string{"Electronics", "Clothing", "Home & Garden", "Office Supplies", "Toys & Games", "Health & Beauty", "Automotive", "Sports & Outdoors"}
+
+	for _, name := range categories {
+		var count int64
+		config.DB.Model(&models.Category{}).Where("name = ?", name).Count(&count)
+		if count == 0 {
+			config.DB.Create(&models.Category{Name: name, Description: "Default category"})
+			fmt.Printf("Created category: %s\n", name)
+		}
+	}
+}
 
 func main() {
 	// Load .env
@@ -30,10 +44,14 @@ func main() {
 		&models.Product{},
 		&models.StockHistory{},
 		&models.ActivityLog{},
+		&models.Category{},
 	); err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
 	log.Println("✅ Database migrated successfully!")
+
+	// Seed Categories
+	seedCategories()
 
 	// Seed data (optional)
 	seedData()

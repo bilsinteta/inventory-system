@@ -42,7 +42,14 @@ const ProductCard = ({ product, onEdit, onDelete, onViewDetail, onViewHistory })
       {/* Product Info */}
       <div className="p-5">
         <div className="mb-4">
-          <p className="text-xs font-medium text-gray-400 mb-1 tracking-wider uppercase">SKU: {product.sku}</p>
+          <div className="flex justify-between items-start mb-2">
+            <p className="text-xs font-medium text-gray-400 tracking-wider uppercase">SKU: {product.sku}</p>
+            {product.category && (
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-100 text-purple-600 border border-purple-200 uppercase tracking-wide">
+                {product.category.name}
+              </span>
+            )}
+          </div>
           <h3
             className="text-lg font-bold text-gray-800 hover:text-primary-600 cursor-pointer transition-colors line-clamp-1"
             onClick={() => onViewDetail(product)}

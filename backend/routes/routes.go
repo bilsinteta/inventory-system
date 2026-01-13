@@ -26,6 +26,13 @@ func SetupRoutes(app *fiber.App) {
 	suppliers.Put("/:id", controllers.UpdateSupplier)
 	suppliers.Delete("/:id", controllers.DeleteSupplier)
 
+	// Categories
+	categories := protected.Group("/categories")
+	categories.Get("/", controllers.GetCategories)
+	categories.Post("/", controllers.CreateCategory)
+	categories.Put("/:id", controllers.UpdateCategory)
+	categories.Delete("/:id", controllers.DeleteCategory)
+
 	// Products
 	products := protected.Group("/products")
 	products.Get("/", controllers.GetProducts)
@@ -39,9 +46,18 @@ func SetupRoutes(app *fiber.App) {
 	products.Post("/:id/stock", controllers.UpdateStock)
 	products.Get("/:id/history", controllers.GetStockHistory)
 
+	// Profile Routes
+	profile := protected.Group("/profile")
+	profile.Put("/update", controllers.UpdateProfile)
+	profile.Put("/change-password", controllers.ChangePassword)
+
 	// Admin Routes
 	admin := protected.Group("/admin", middleware.AdminOnly) // Assuming middleware.AdminRequired needs to be implemented or reused
-	admin.Get("/users", controllers.GetAllUsers)             // New endpoint to get all users
+	// Export Routes
+	admin.Get("/export/products", controllers.ExportProducts)
+	admin.Get("/export/logs", controllers.ExportActivityLogs)
+
+	admin.Get("/users", controllers.GetAllUsers) // New endpoint to get all users
 	admin.Get("/users/pending", controllers.GetPendingUsers)
 	admin.Get("/logs", controllers.GetActivityLogs) // Audit Logs
 	admin.Put("/users/:id/approve", controllers.ApproveUser)

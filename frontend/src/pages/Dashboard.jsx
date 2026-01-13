@@ -3,12 +3,14 @@ import Navbar from '../components/Navbar';
 import ProductCard from '../components/ProductCard';
 import ProductModal from '../components/ProductModal';
 import StockModal from '../components/StockModal';
-import StockHistoryModal from '../components/StockHistoryModal'; // New import
-import SupplierModal from '../components/SupplierModal'; // New import
-import UserManagementModal from '../components/UserManagementModal'; // New import
+import StockHistoryModal from '../components/StockHistoryModal';
+import SupplierModal from '../components/SupplierModal';
+import CategoryManagementModal from '../components/CategoryManagementModal'; // New Import
+import UserManagementModal from '../components/UserManagementModal';
 import ActivityLogsModal from '../components/ActivityLogsModal'; // New import
 import { productService } from '../api/productService';
 import { supplierService } from '../api/supplierService';
+import { categoryService } from '../api/categoryService';
 import { useAuth } from '../context/AuthContext'; // Import useAuth
 import { FiPlus, FiSearch, FiAlertCircle, FiPackage, FiFilter, FiChevronLeft, FiChevronRight, FiUsers, FiTruck, FiCheckSquare, FiActivity } from 'react-icons/fi';
 
@@ -18,18 +20,21 @@ const Dashboard = () => {
   const [suppliers, setSuppliers] = useState([]);
   const [pagination, setPagination] = useState({});
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([]); // New state
 
   // Modals state
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [stockModalOpen, setStockModalOpen] = useState(false);
-  const [historyModalOpen, setHistoryModalOpen] = useState(false); // New
-  const [supplierModalOpen, setSupplierModalOpen] = useState(false); // New
-  const [approvalModalOpen, setApprovalModalOpen] = useState(false); // New
-  const [activityLogsModalOpen, setActivityLogsModalOpen] = useState(false); // New
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false); // New State
+  const [approvalModalOpen, setApprovalModalOpen] = useState(false);
+  const [activityLogsModalOpen, setActivityLogsModalOpen] = useState(false);
 
   const [editingProduct, setEditingProduct] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState(''); // New state for filter
   const [currentPage, setCurrentPage] = useState(1);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
 
@@ -44,14 +49,16 @@ const Dashboard = () => {
     try {
       setLoading(true);
 
-      // Fetch stats data
-      const [suppliersData, lowStockData, allProductsData] = await Promise.all([
+      // Fetch stats data and categories
+      const [suppliersData, lowStockData, allProductsData, categoriesData] = await Promise.all([
         supplierService.getAll(),
         productService.getLowStock(),
-        productService.getAll({ page: 1, limit: 1000 }) // Get all for simple count, or backend could send count
+        productService.getAll({ page: 1, limit: 1000 }),
+        categoryService.getAll(), // Fetch categories
       ]);
 
       setSuppliers(suppliersData);
+      setCategories(categoriesData); // Set categories
 
       // Update stats
       setStats({
@@ -68,6 +75,7 @@ const Dashboard = () => {
           page: currentPage,
           limit: 12,
           search: searchQuery,
+          category_id: selectedCategory, // Pass category filter
         });
         setProducts(productsData.products);
         setPagination(productsData.pagination);
@@ -77,7 +85,7 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchQuery, showLowStockOnly]);
+  }, [currentPage, searchQuery, showLowStockOnly, selectedCategory]);
 
   useEffect(() => {
     fetchData();
@@ -186,7 +194,7 @@ const Dashboard = () => {
         {/* Action Bar (Search, Filters, Buttons) */}
         <div className="glass-card p-4 mb-8 flex flex-col xl:flex-row gap-4 items-center justify-between sticky top-24 z-30 animate-fade-in transition-all">
           {/* Search */}
-          <div className="w-full xl:w-96 relative">
+          <div className="w-full xl:w-96 relative shrink-0">
             <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <form onSubmit={handleSearch}>
               <input
@@ -200,15 +208,15 @@ const Dashboard = () => {
           </div>
 
           {/* Controls Group */}
-          <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto justify-end">
+          <div className="flex items-center gap-3 w-full xl:w-auto overflow-x-auto xl:overflow-visible pb-2 xl:pb-0 xl:flex-wrap justify-start xl:justify-end no-scrollbar mask-fade-right">
             {/* Filter Low Stock */}
-            <div className="flex bg-gray-100 p-1 rounded-xl">
+            <div className="flex bg-gray-100 p-1 rounded-xl shrink-0">
               <button
                 onClick={() => {
                   setShowLowStockOnly(false);
                   setCurrentPage(1);
                 }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${!showLowStockOnly
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 whitespace-nowrap ${!showLowStockOnly
                   ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
                   }`}
@@ -220,7 +228,7 @@ const Dashboard = () => {
                   setShowLowStockOnly(true);
                   setCurrentPage(1);
                 }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${showLowStockOnly
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 whitespace-nowrap ${showLowStockOnly
                   ? 'bg-white text-red-600 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
                   }`}
@@ -229,27 +237,57 @@ const Dashboard = () => {
               </button>
             </div>
 
+            {/* Category Filter */}
+            <div className="relative shrink-0">
+              <select
+                value={selectedCategory}
+                onChange={(e) => {
+                  setSelectedCategory(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="appearance-none bg-white border border-gray-200 text-gray-700 px-4 py-2.5 pr-8 rounded-xl hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-100 transition-all font-medium shadow-sm whitespace-nowrap"
+              >
+                <option value="">All Categories</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <FiFilter size={14} />
+              </div>
+            </div>
+
             {/* Admin Actions */}
             <button
               onClick={() => setSupplierModalOpen(true)}
-              className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-2 font-medium shadow-sm"
+              className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-2 font-medium shadow-sm shrink-0 whitespace-nowrap"
             >
               <FiTruck className="text-indigo-500" />
               <span>Suppliers</span>
+            </button>
+
+            <button
+              onClick={() => setCategoryModalOpen(true)}
+              className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-2 font-medium shadow-sm shrink-0 whitespace-nowrap"
+            >
+              <FiPackage className="text-purple-500" />
+              <span>Categories</span>
             </button>
 
             {user?.role === 'admin' && (
               <>
                 <button
                   onClick={() => setActivityLogsModalOpen(true)}
-                  className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-2 font-medium shadow-sm"
+                  className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-2 font-medium shadow-sm shrink-0 whitespace-nowrap"
                 >
                   <FiActivity className="text-orange-500" />
                   <span>Logs</span>
                 </button>
                 <button
                   onClick={() => setApprovalModalOpen(true)}
-                  className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-2 font-medium shadow-sm"
+                  className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-2 font-medium shadow-sm shrink-0 whitespace-nowrap"
                 >
                   <FiCheckSquare className="text-green-500" />
                   <span>Approvals</span>
@@ -257,16 +295,51 @@ const Dashboard = () => {
               </>
             )}
 
-            <button
-              onClick={() => {
-                setEditingProduct(null);
-                setProductModalOpen(true);
-              }}
-              className="btn-primary flex items-center gap-2 shadow-lg shadow-primary-500/30 px-5 py-2.5"
-            >
-              <FiPlus size={20} />
-              <span className="hidden sm:inline">New Product</span>
-            </button>
+            {/* Export and New Product */}
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={async () => {
+                  try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch('http://localhost:8081/api/admin/export/products', {
+                      headers: { Authorization: `Bearer ${token}` }
+                    });
+
+                    if (!response.ok) {
+                      const errorData = await response.json();
+                      throw new Error(errorData.error || 'Export failed');
+                    }
+
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `inventory_products_${new Date().toISOString().split('T')[0]}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                  } catch (error) {
+                    alert(error.message || 'Failed to export products');
+                  }
+                }}
+                className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-2 font-medium shadow-sm whitespace-nowrap"
+              >
+                <FiPackage className="text-green-600" />
+                <span>Export Excel</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setEditingProduct(null);
+                  setProductModalOpen(true);
+                }}
+                className="btn-primary flex items-center gap-2 shadow-lg shadow-primary-500/30 px-5 py-2.5 whitespace-nowrap"
+              >
+                <FiPlus size={20} />
+                <span className="hidden sm:inline">New Product</span>
+                <span className="sm:hidden">New</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -339,6 +412,7 @@ const Dashboard = () => {
         onSubmit={handleCreateOrUpdate}
         product={editingProduct}
         suppliers={suppliers}
+        categories={categories}
       />
 
       <StockModal
@@ -368,6 +442,16 @@ const Dashboard = () => {
           isOpen={supplierModalOpen}
           onClose={() => setSupplierModalOpen(false)}
           refreshSuppliers={fetchData}
+        />
+      )}
+
+      {categoryModalOpen && (
+        <CategoryManagementModal
+          isOpen={categoryModalOpen}
+          onClose={() => {
+            setCategoryModalOpen(false);
+            fetchData(); // Refresh categories when modal closes
+          }}
         />
       )}
 

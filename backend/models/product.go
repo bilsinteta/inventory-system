@@ -16,11 +16,13 @@ type Product struct {
 	MinStock    int            `gorm:"default:10" json:"min_stock"` // Alert jika stock < min_stock
 	ImageURL    string         `gorm:"type:varchar(255)" json:"image_url"`
 	SupplierID  uint           `gorm:"not null" json:"supplier_id"`
+	CategoryID  *uint          `json:"category_id"` // Pointer to allow null initially
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
-	
+
 	// Relations
 	Supplier     Supplier       `gorm:"foreignKey:SupplierID" json:"supplier,omitempty"`
+	Category     Category       `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
 	StockHistory []StockHistory `gorm:"foreignKey:ProductID" json:"stock_history,omitempty"`
 }

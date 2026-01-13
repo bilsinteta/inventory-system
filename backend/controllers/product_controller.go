@@ -21,6 +21,7 @@ type ProductRequest struct {
 	Stock       int     `json:"stock"`
 	MinStock    int     `json:"min_stock"`
 	SupplierID  uint    `json:"supplier_id"`
+	CategoryID  *uint   `json:"category_id"`
 }
 
 // Get All Products dengan Search & Pagination
@@ -34,11 +35,16 @@ func GetProducts(c *fiber.Ctx) error {
 
 	// Search
 	search := c.Query("search")
+	categoryID := c.Query("category_id")
 
-	query := config.DB.Preload("Supplier")
+	query := config.DB.Preload("Supplier").Preload("Category")
 
 	if search != "" {
 		query = query.Where("name LIKE ? OR sku LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+
+	if categoryID != "" {
+		query = query.Where("category_id = ?", categoryID)
 	}
 
 	// Count total
@@ -64,97 +70,84 @@ func GetProducts(c *fiber.Ctx) error {
 // Get Single Product
 func GetProduct(c *fiber.Ctx) error {
 	id := c.Params("id")
-
 	var product models.Product
-	if err := config.DB.Preload("Supplier").Preload("StockHistory").First(&product, id).Error; err != nil {
+
+	if err := config.DB.Preload("Supplier").Preload("Category").Preload("StockHistory").First(&product, id).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Product not found"})
 	}
 
-	return c.JSON(fiber.Map{
-		"product": product,
-	})
+	return c.JSON(fiber.Map{"product": product})
 }
 
 // Create Product dengan Upload Image
 func CreateProduct(c *fiber.Ctx) error {
-	// Parse form data
+	// Parse SKU/Quantity etc from Form Data
 	sku := c.FormValue("sku")
 	name := c.FormValue("name")
-	description := c.FormValue("description")
-	priceStr := c.FormValue("price")
-	stockStr := c.FormValue("stock")
-	minStockStr := c.FormValue("min_stock")
-	supplierIDStr := c.FormValue("supplier_id")
+	desc := c.FormValue("description")
+	price, _ := strconv.ParseFloat(c.FormValue("price"), 64)
+	stock, _ := strconv.Atoi(c.FormValue("stock"))
+	minStock, _ := strconv.Atoi(c.FormValue("min_stock"))
+	supplierID, _ := strconv.Atoi(c.FormValue("supplier_id"))
+	categoryID, _ := strconv.Atoi(c.FormValue("category_id"))
 
 	// Validasi
-	if sku == "" || name == "" || priceStr == "" || supplierIDStr == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "SKU, name, price, and supplier_id are required"})
+	if sku == "" || name == "" || price <= 0 || supplierID == 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "SKU, Name, Price, and Supplier are required"})
 	}
 
-	price, _ := strconv.ParseFloat(priceStr, 64)
-	stock, _ := strconv.Atoi(stockStr)
-	minStock, _ := strconv.Atoi(minStockStr)
-	supplierID, _ := strconv.ParseUint(supplierIDStr, 10, 32)
-
-	// Check if SKU already exists (including soft-deleted)
+	// Cek SKU Unik (Handle Soft Delete collision)
 	var existingProduct models.Product
 	if err := config.DB.Unscoped().Where("sku = ?", sku).First(&existingProduct).Error; err == nil {
 		if existingProduct.DeletedAt.Valid {
-			// Found a deleted product with this SKU. Rename it to free up the SKU.
-			oldSKU := existingProduct.SKU
-			existingProduct.SKU = fmt.Sprintf("%s_OLD_DELETED_%d", oldSKU, time.Now().Unix())
-			config.DB.Save(&existingProduct)
-			// Now we can proceed to create the new product
+			// SKU collision with deleted product -> Rename old product
+			newSKU := fmt.Sprintf("%s_DELETED_%d", existingProduct.SKU, time.Now().Unix())
+			config.DB.Model(&existingProduct).Update("sku", newSKU)
 		} else {
 			return c.Status(400).JSON(fiber.Map{"error": "SKU already exists"})
 		}
 	}
 
-	// Check if supplier exists
-	var supplier models.Supplier
-	if err := config.DB.First(&supplier, supplierID).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "Supplier not found"})
+	// Handle Image Upload
+	var imageURL string
+	if file, err := c.FormFile("image"); err == nil {
+		filename := fmt.Sprintf("%d_%s", time.Now().Unix(), file.Filename)
+		path := fmt.Sprintf("./uploads/%s", filename)
+
+		if err := c.SaveFile(file, path); err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to save image"})
+		}
+		imageURL = "/uploads/" + filename
 	}
 
-	// Handle image upload
-	var imageURL string
-	file, err := c.FormFile("image")
-	if err == nil {
-		uploadPath := os.Getenv("UPLOAD_PATH")
-		if uploadPath == "" {
-			uploadPath = "./uploads"
-		}
-
-		fileName, err := utils.SaveUploadedFile(file, uploadPath)
-		if err != nil {
-			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
-		}
-		imageURL = "/uploads/" + fileName
+	// Assign CategoryID safely
+	var catIDPtr *uint
+	if categoryID != 0 {
+		cid := uint(categoryID)
+		catIDPtr = &cid
 	}
 
 	product := models.Product{
 		SKU:         sku,
 		Name:        name,
-		Description: description,
+		Description: desc,
 		Price:       price,
 		Stock:       stock,
 		MinStock:    minStock,
-		ImageURL:    imageURL,
 		SupplierID:  uint(supplierID),
+		CategoryID:  catIDPtr,
+		ImageURL:    imageURL,
 	}
 
 	if err := config.DB.Create(&product).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create product"})
 	}
 
-	// Load supplier relation
-	config.DB.Preload("Supplier").First(&product, product.ID)
-
 	// Log Activity
 	userID, _ := c.Locals("userID").(uint)
-	utils.LogActivity(userID, "CREATE", "Product", product.ID, "Created product: "+product.Name+" ("+product.SKU+")")
+	utils.LogActivity(userID, "CREATE", "Product", product.ID, fmt.Sprintf("Created product: %s (%s)", product.Name, product.SKU))
 
-	return c.Status(201).JSON(fiber.Map{
+	return c.JSON(fiber.Map{
 		"message": "Product created successfully",
 		"product": product,
 	})
@@ -177,6 +170,7 @@ func UpdateProduct(c *fiber.Ctx) error {
 	stockStr := c.FormValue("stock")
 	minStockStr := c.FormValue("min_stock")
 	supplierIDStr := c.FormValue("supplier_id")
+	categoryIDStr := c.FormValue("category_id")
 
 	// Update fields
 	if sku != "" && sku != product.SKU {
@@ -213,6 +207,17 @@ func UpdateProduct(c *fiber.Ctx) error {
 			return c.Status(404).JSON(fiber.Map{"error": "Supplier not found"})
 		}
 		product.SupplierID = uint(supplierID)
+	}
+
+	if categoryIDStr != "" {
+		categoryID, _ := strconv.Atoi(categoryIDStr)
+		// Validation could refer to checking if category exists
+		var category models.Category
+		if err := config.DB.First(&category, categoryID).Error; err != nil {
+			return c.Status(404).JSON(fiber.Map{"error": "Category not found"})
+		}
+		cid := uint(categoryID)
+		product.CategoryID = &cid
 	}
 
 	// Handle image upload

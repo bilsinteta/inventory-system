@@ -1,20 +1,54 @@
-import { useState } from 'react';
-import { FiX, FiUpload } from 'react-icons/fi';
+import { useState, useEffect } from 'react';
+import { FiX, FiUpload, FiTruck, FiPackage } from 'react-icons/fi';
 
-const ProductModal = ({ isOpen, onClose, onSubmit, product, suppliers }) => {
+const ProductModal = ({ isOpen, onClose, onSubmit, product, suppliers, categories = [] }) => {
   const [formData, setFormData] = useState({
-    sku: product?.sku || '',
-    name: product?.name || '',
-    description: product?.description || '',
-    price: product?.price || '',
-    stock: product?.stock || '',
-    min_stock: product?.min_stock || '',
-    supplier_id: product?.supplier_id || '',
+    sku: '',
+    name: '',
+    description: '',
+    price: '',
+    stock: '',
+    min_stock: '',
+    supplier_id: '',
+    category_id: '',
+    image: null,
   });
   const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(
-    product?.image_url ? `http://localhost:8081${product.image_url}` : null
-  );
+  const [imagePreview, setImagePreview] = useState(null);
+
+  useEffect(() => {
+    if (product) {
+      setFormData({
+        sku: product.sku,
+        name: product.name,
+        description: product.description || '',
+        price: product.price,
+        stock: product.stock,
+        min_stock: product.min_stock,
+        supplier_id: product.supplier_id,
+        category_id: product.category_id || '',
+        image: null,
+      });
+      setImagePreview(product.image_url ? `http://localhost:8081${product.image_url}` : null);
+    } else {
+      setFormData({
+        sku: '',
+        name: '',
+        description: '',
+        price: '',
+        stock: '',
+        min_stock: '',
+        supplier_id: '',
+        category_id: '',
+        image: null,
+      });
+      setImagePreview(null);
+    }
+  }, [product, isOpen]);
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -35,6 +69,7 @@ const ProductModal = ({ isOpen, onClose, onSubmit, product, suppliers }) => {
     submitFormData.append('stock', formData.stock);
     submitFormData.append('min_stock', formData.min_stock);
     submitFormData.append('supplier_id', formData.supplier_id);
+    if (formData.category_id) submitFormData.append('category_id', formData.category_id);
 
     if (imageFile) {
       submitFormData.append('image', imageFile);
@@ -107,37 +142,63 @@ const ProductModal = ({ isOpen, onClose, onSubmit, product, suppliers }) => {
               </div>
             </div>
 
-            {/* SKU & Name */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  SKU <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.sku}
-                  onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all outline-none"
-                  placeholder="e.g. PROD-001"
-                  required
-                />
-              </div>
+            {/* SKU */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                SKU <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="sku"
+                value={formData.sku}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all outline-none"
+                placeholder="e.g. PROD-001"
+                required
+              />
+            </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Supplier Selection */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Supplier <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Supplier <span className="text-red-500">*</span></label>
                 <div className="relative">
+                  <FiTruck className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <select
+                    name="supplier_id"
                     value={formData.supplier_id}
-                    onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all outline-none appearance-none"
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all appearance-none"
                     required
                   >
-                    <option value="">Select Supplier...</option>
+                    <option value="">Select Supplier</option>
                     {suppliers.map((sup) => (
                       <option key={sup.id} value={sup.id}>
                         {sup.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                    ▼
+                  </div>
+                </div>
+              </div>
+
+              {/* Category Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <div className="relative">
+                  <FiPackage className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <select
+                    name="category_id"
+                    value={formData.category_id}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all appearance-none"
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
                       </option>
                     ))}
                   </select>
@@ -155,8 +216,9 @@ const ProductModal = ({ isOpen, onClose, onSubmit, product, suppliers }) => {
               </label>
               <input
                 type="text"
+                name="name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={handleChange}
                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all outline-none"
                 placeholder="Enter product display name"
                 required
@@ -169,8 +231,9 @@ const ProductModal = ({ isOpen, onClose, onSubmit, product, suppliers }) => {
                 Description
               </label>
               <textarea
+                name="description"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={handleChange}
                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all outline-none"
                 rows="3"
                 placeholder="Product specifications, features, etc..."
@@ -185,8 +248,9 @@ const ProductModal = ({ isOpen, onClose, onSubmit, product, suppliers }) => {
                 </label>
                 <input
                   type="number"
+                  name="price"
                   value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  onChange={handleChange}
                   className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all outline-none"
                   placeholder="0"
                   required
@@ -199,8 +263,9 @@ const ProductModal = ({ isOpen, onClose, onSubmit, product, suppliers }) => {
                 </label>
                 <input
                   type="number"
+                  name="stock"
                   value={formData.stock}
-                  onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                  onChange={handleChange}
                   className={`w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all outline-none ${product ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
                   placeholder="0"
                   required
@@ -214,8 +279,9 @@ const ProductModal = ({ isOpen, onClose, onSubmit, product, suppliers }) => {
                 </label>
                 <input
                   type="number"
+                  name="min_stock"
                   value={formData.min_stock}
-                  onChange={(e) => setFormData({ ...formData, min_stock: e.target.value })}
+                  onChange={handleChange}
                   className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all outline-none"
                   placeholder="0"
                   required

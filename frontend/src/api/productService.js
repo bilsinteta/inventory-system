@@ -7,7 +7,8 @@ export const productService = {
     if (params.page) queryParams.append('page', params.page);
     if (params.limit) queryParams.append('limit', params.limit);
     if (params.search) queryParams.append('search', params.search);
-    
+    if (params.category_id) queryParams.append('category_id', params.category_id);
+
     const response = await axios.get(`/products?${queryParams.toString()}`);
     return response.data;
   },

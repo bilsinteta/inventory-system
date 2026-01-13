@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"inventory-backend/config"
+	"inventory-backend/models"
 	"inventory-backend/utils"
 	"strings"
 
@@ -24,9 +26,23 @@ func AuthRequired(c *fiber.Ctx) error {
 		})
 	}
 
-	c.Locals("userID", claims.UserID)
-	c.Locals("email", claims.Email)
-	c.Locals("role", claims.Role)
+	// Double check to database for role & isActive updates
+	var user models.User
+	if err := config.DB.First(&user, claims.UserID).Error; err != nil {
+		return c.Status(401).JSON(fiber.Map{
+			"error": "Unauthorized: User not found",
+		})
+	}
+
+	if !user.IsActive {
+		return c.Status(403).JSON(fiber.Map{
+			"error": "Forbidden: Your account is inactive",
+		})
+	}
+
+	c.Locals("userID", user.ID)
+	c.Locals("email", user.Email)
+	c.Locals("role", user.Role) // Use role from DB, not from Token!
 
 	return c.Next()
 }
@@ -34,7 +50,7 @@ func AuthRequired(c *fiber.Ctx) error {
 // Admin only middleware
 func AdminOnly(c *fiber.Ctx) error {
 	role := c.Locals("role").(string)
-	
+
 	if role != "admin" {
 		return c.Status(403).JSON(fiber.Map{
 			"error": "Forbidden: Admin access required",

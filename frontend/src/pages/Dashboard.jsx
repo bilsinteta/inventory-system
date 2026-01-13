@@ -6,10 +6,11 @@ import StockModal from '../components/StockModal';
 import StockHistoryModal from '../components/StockHistoryModal'; // New import
 import SupplierModal from '../components/SupplierModal'; // New import
 import UserManagementModal from '../components/UserManagementModal'; // New import
+import ActivityLogsModal from '../components/ActivityLogsModal'; // New import
 import { productService } from '../api/productService';
 import { supplierService } from '../api/supplierService';
 import { useAuth } from '../context/AuthContext'; // Import useAuth
-import { FiPlus, FiSearch, FiAlertCircle, FiPackage, FiFilter, FiChevronLeft, FiChevronRight, FiUsers, FiTruck, FiCheckSquare } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiAlertCircle, FiPackage, FiFilter, FiChevronLeft, FiChevronRight, FiUsers, FiTruck, FiCheckSquare, FiActivity } from 'react-icons/fi';
 
 const Dashboard = () => {
   const { user } = useAuth(); // Get user for role check
@@ -24,6 +25,7 @@ const Dashboard = () => {
   const [historyModalOpen, setHistoryModalOpen] = useState(false); // New
   const [supplierModalOpen, setSupplierModalOpen] = useState(false); // New
   const [approvalModalOpen, setApprovalModalOpen] = useState(false); // New
+  const [activityLogsModalOpen, setActivityLogsModalOpen] = useState(false); // New
 
   const [editingProduct, setEditingProduct] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -237,13 +239,22 @@ const Dashboard = () => {
             </button>
 
             {user?.role === 'admin' && (
-              <button
-                onClick={() => setApprovalModalOpen(true)}
-                className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-2 font-medium shadow-sm"
-              >
-                <FiCheckSquare className="text-green-500" />
-                <span>Approvals</span>
-              </button>
+              <>
+                <button
+                  onClick={() => setActivityLogsModalOpen(true)}
+                  className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-2 font-medium shadow-sm"
+                >
+                  <FiActivity className="text-orange-500" />
+                  <span>Logs</span>
+                </button>
+                <button
+                  onClick={() => setApprovalModalOpen(true)}
+                  className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-2 font-medium shadow-sm"
+                >
+                  <FiCheckSquare className="text-green-500" />
+                  <span>Approvals</span>
+                </button>
+              </>
             )}
 
             <button
@@ -364,6 +375,13 @@ const Dashboard = () => {
         <UserManagementModal
           isOpen={approvalModalOpen}
           onClose={() => setApprovalModalOpen(false)}
+        />
+      )}
+
+      {activityLogsModalOpen && user?.role === 'admin' && (
+        <ActivityLogsModal
+          isOpen={activityLogsModalOpen}
+          onClose={() => setActivityLogsModalOpen(false)}
         />
       )}
     </div>

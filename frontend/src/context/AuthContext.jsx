@@ -40,11 +40,17 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const updateUser = (userData) => {
+    authService.updateLocalUser(userData);
+    setUser(userData);
+  };
+
   const value = {
     user,
     login,
     register,
     logout,
+    updateUser,
     isAuthenticated: authService.isAuthenticated(),
     loading,
   };

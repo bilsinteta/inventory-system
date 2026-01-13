@@ -4,7 +4,7 @@ import { FiX, FiCheck, FiUserCheck, FiUserX, FiShield, FiMoreVertical, FiTrash2,
 import { useAuth } from '../context/AuthContext';
 
 const UserManagementModal = ({ isOpen, onClose }) => {
-    const { user: currentUser } = useAuth();
+    const { user: currentUser, updateUser } = useAuth();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [editingUser, setEditingUser] = useState(null); // ID of user being edited
@@ -50,6 +50,17 @@ const UserManagementModal = ({ isOpen, onClose }) => {
                 is_active: newStatus !== undefined ? newStatus : user.is_active,
                 role: newRole || user.role
             });
+
+            // IF updating SELF, update the context immediately
+            if (user.id === currentUser.id) {
+                const updatedUser = {
+                    ...currentUser,
+                    role: newRole || currentUser.role,
+                    is_active: newStatus !== undefined ? newStatus : currentUser.is_active
+                };
+                updateUser(updatedUser);
+            }
+
             alert("User updated successfully!");
             fetchUsers();
             setEditingUser(null);

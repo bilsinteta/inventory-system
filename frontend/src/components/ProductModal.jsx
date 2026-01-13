@@ -201,9 +201,10 @@ const ProductModal = ({ isOpen, onClose, onSubmit, product, suppliers }) => {
                   type="number"
                   value={formData.stock}
                   onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all outline-none"
+                  className={`w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-100 focus:border-primary-500 transition-all outline-none ${product ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
                   placeholder="0"
                   required
+                  disabled={!!product}
                 />
               </div>
 

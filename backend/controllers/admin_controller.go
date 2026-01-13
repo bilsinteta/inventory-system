@@ -91,3 +91,14 @@ func DeleteUser(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{"message": "User deleted successfully"})
 }
+
+func GetActivityLogs(c *fiber.Ctx) error {
+	var logs []models.ActivityLog
+
+	// Fetch logs with User preloaded, newest first
+	if err := config.DB.Preload("User").Order("created_at desc").Find(&logs).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch activity logs"})
+	}
+
+	return c.JSON(logs)
+}

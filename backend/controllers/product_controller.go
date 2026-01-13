@@ -1,12 +1,14 @@
 package controllers
 
 import (
+	"fmt"
 	"inventory-backend/config"
 	"inventory-backend/models"
 	"inventory-backend/utils"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -24,7 +26,7 @@ type ProductRequest struct {
 // Get All Products dengan Search & Pagination
 func GetProducts(c *fiber.Ctx) error {
 	var products []models.Product
-	
+
 	// Pagination
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
@@ -32,9 +34,9 @@ func GetProducts(c *fiber.Ctx) error {
 
 	// Search
 	search := c.Query("search")
-	
+
 	query := config.DB.Preload("Supplier")
-	
+
 	if search != "" {
 		query = query.Where("name LIKE ? OR sku LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
@@ -94,10 +96,18 @@ func CreateProduct(c *fiber.Ctx) error {
 	minStock, _ := strconv.Atoi(minStockStr)
 	supplierID, _ := strconv.ParseUint(supplierIDStr, 10, 32)
 
-	// Check if SKU already exists
+	// Check if SKU already exists (including soft-deleted)
 	var existingProduct models.Product
-	if err := config.DB.Where("sku = ?", sku).First(&existingProduct).Error; err == nil {
-		return c.Status(400).JSON(fiber.Map{"error": "SKU already exists"})
+	if err := config.DB.Unscoped().Where("sku = ?", sku).First(&existingProduct).Error; err == nil {
+		if existingProduct.DeletedAt.Valid {
+			// Found a deleted product with this SKU. Rename it to free up the SKU.
+			oldSKU := existingProduct.SKU
+			existingProduct.SKU = fmt.Sprintf("%s_OLD_DELETED_%d", oldSKU, time.Now().Unix())
+			config.DB.Save(&existingProduct)
+			// Now we can proceed to create the new product
+		} else {
+			return c.Status(400).JSON(fiber.Map{"error": "SKU already exists"})
+		}
 	}
 
 	// Check if supplier exists
@@ -139,6 +149,10 @@ func CreateProduct(c *fiber.Ctx) error {
 
 	// Load supplier relation
 	config.DB.Preload("Supplier").First(&product, product.ID)
+
+	// Log Activity
+	userID, _ := c.Locals("userID").(uint)
+	utils.LogActivity(userID, "CREATE", "Product", product.ID, "Created product: "+product.Name+" ("+product.SKU+")")
 
 	return c.Status(201).JSON(fiber.Map{
 		"message": "Product created successfully",
@@ -229,6 +243,10 @@ func UpdateProduct(c *fiber.Ctx) error {
 	// Load supplier relation
 	config.DB.Preload("Supplier").First(&product, product.ID)
 
+	// Log Activity
+	userID, _ := c.Locals("userID").(uint)
+	utils.LogActivity(userID, "UPDATE", "Product", product.ID, "Updated product: "+product.Name+" ("+product.SKU+")")
+
 	return c.JSON(fiber.Map{
 		"message": "Product updated successfully",
 		"product": product,
@@ -254,9 +272,18 @@ func DeleteProduct(c *fiber.Ctx) error {
 		utils.DeleteFile(fileName, uploadPath)
 	}
 
+	// Smart Delete: Rename SKU to release it
+	originalSKU := product.SKU
+	product.SKU = fmt.Sprintf("%s_DELETED_%d", product.SKU, time.Now().Unix())
+	config.DB.Save(&product)
+
 	if err := config.DB.Delete(&product).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to delete product"})
 	}
+
+	// Log Activity
+	userID, _ := c.Locals("userID").(uint)
+	utils.LogActivity(userID, "DELETE", "Product", product.ID, "Deleted product: "+product.Name+" ("+originalSKU+")")
 
 	return c.JSON(fiber.Map{
 		"message": "Product deleted successfully",
@@ -266,7 +293,7 @@ func DeleteProduct(c *fiber.Ctx) error {
 // Get Low Stock Products (stock < min_stock)
 func GetLowStockProducts(c *fiber.Ctx) error {
 	var products []models.Product
-	
+
 	if err := config.DB.Preload("Supplier").
 		Where("stock < min_stock").
 		Find(&products).Error; err != nil {

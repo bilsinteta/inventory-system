@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"fmt"
 	"inventory-backend/config"
 	"inventory-backend/models"
+	"inventory-backend/utils"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -67,6 +69,10 @@ func UpdateStock(c *fiber.Ctx) error {
 	if err := config.DB.Create(&history).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create stock history"})
 	}
+
+	// Log Activity
+	userID, _ := c.Locals("userID").(uint)
+	utils.LogActivity(userID, "UPDATE", "Product", product.ID, fmt.Sprintf("Updated stock for %s (%s): %s %d (New Stock: %d)", product.Name, product.SKU, req.Type, req.Quantity, stockAfter))
 
 	return c.JSON(fiber.Map{
 		"message":      "Stock updated successfully",

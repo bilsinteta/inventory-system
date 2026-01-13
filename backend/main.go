@@ -29,6 +29,7 @@ func main() {
 		&models.Supplier{},
 		&models.Product{},
 		&models.StockHistory{},
+		&models.ActivityLog{},
 	); err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}

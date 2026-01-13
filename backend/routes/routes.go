@@ -43,6 +43,7 @@ func SetupRoutes(app *fiber.App) {
 	admin := protected.Group("/admin", middleware.AdminOnly) // Assuming middleware.AdminRequired needs to be implemented or reused
 	admin.Get("/users", controllers.GetAllUsers)             // New endpoint to get all users
 	admin.Get("/users/pending", controllers.GetPendingUsers)
+	admin.Get("/logs", controllers.GetActivityLogs) // Audit Logs
 	admin.Put("/users/:id/approve", controllers.ApproveUser)
 	admin.Delete("/users/:id", controllers.DeleteUser)
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from '../api/axios';
+import { exportService } from '../api/exportService';
 import { FiX, FiActivity, FiClock, FiUser, FiInfo, FiDownload } from 'react-icons/fi';
 
 const ActivityLogsModal = ({ isOpen, onClose }) => {
@@ -51,25 +52,9 @@ const ActivityLogsModal = ({ isOpen, onClose }) => {
 
     const handleExport = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:8081/api/admin/export/logs', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to generate PDF');
-            }
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `activity_logs_${new Date().toISOString().split('T')[0]}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
+            await exportService.downloadActivityLogs();
         } catch (error) {
-            alert(error.message || 'Failed to export logs');
+            alert('Failed to export logs');
         }
     };
 

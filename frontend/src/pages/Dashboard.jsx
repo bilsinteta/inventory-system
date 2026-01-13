@@ -11,6 +11,7 @@ import ActivityLogsModal from '../components/ActivityLogsModal'; // New import
 import { productService } from '../api/productService';
 import { supplierService } from '../api/supplierService';
 import { categoryService } from '../api/categoryService';
+import { exportService } from '../api/exportService';
 import { useAuth } from '../context/AuthContext'; // Import useAuth
 import { FiPlus, FiSearch, FiAlertCircle, FiPackage, FiFilter, FiChevronLeft, FiChevronRight, FiUsers, FiTruck, FiCheckSquare, FiActivity } from 'react-icons/fi';
 
@@ -300,26 +301,9 @@ const Dashboard = () => {
               <button
                 onClick={async () => {
                   try {
-                    const token = localStorage.getItem('token');
-                    const response = await fetch('http://localhost:8081/api/admin/export/products', {
-                      headers: { Authorization: `Bearer ${token}` }
-                    });
-
-                    if (!response.ok) {
-                      const errorData = await response.json();
-                      throw new Error(errorData.error || 'Export failed');
-                    }
-
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `inventory_products_${new Date().toISOString().split('T')[0]}.xlsx`;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
+                    await exportService.downloadProducts();
                   } catch (error) {
-                    alert(error.message || 'Failed to export products');
+                    alert('Failed to export products');
                   }
                 }}
                 className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-2 font-medium shadow-sm whitespace-nowrap"
